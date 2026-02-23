@@ -4,7 +4,6 @@ from copy import deepcopy
 import numpy as np
 from pogema import pogema_v0, GridConfig, AnimationMonitor, AnimationConfig
 from gymnasium import Wrapper
-from pydantic import BaseModel
 
 from pogema_toolbox.registry import ToolboxRegistry
 
@@ -29,17 +28,17 @@ class MultiMapWrapper(Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self._configs = []
-        self._rnd = np.random.default_rng(self.grid_config.seed)
-        pattern = self.grid_config.map_name
+        self._rnd = np.random.default_rng(self.unwrapped.grid_config.seed)
+        pattern = self.unwrapped.grid_config.map_name
 
         if pattern:
             maps = ToolboxRegistry.get_maps()
             for map_name in sorted(maps):
                 if re.match(f'^{pattern}$', map_name):
-                    cfg = deepcopy(self.grid_config)
+                    cfg = deepcopy(self.unwrapped.grid_config)
                     cfg.map = maps[map_name]
                     cfg.map_name = map_name
-                    cfg = GridConfig(**cfg.dict())
+                    cfg = GridConfig(**cfg.model_dump())
                     self._configs.append(cfg)
             if not self._configs:
                 raise KeyError(f"No map matching: {pattern}")

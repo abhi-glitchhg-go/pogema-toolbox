@@ -86,7 +86,7 @@ def generate_wfi_warehouse(cfg: WarehouseConfig = WarehouseConfig()):
 
 
 def main():
-    maps_dict_to_yaml(f'warehouse.yaml', {'warehouse': generate_wfi_warehouse(WarehouseConfig(wall_width=10))})
+    maps_dict_to_yaml('warehouse.yaml', {'warehouse': generate_wfi_warehouse(WarehouseConfig(wall_width=10))})
 
 
 if __name__ == '__main__':

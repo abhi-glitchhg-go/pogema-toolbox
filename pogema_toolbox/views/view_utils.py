@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Optional, Union, List
 
 import pandas as pd
 import yaml
@@ -21,7 +21,7 @@ class View(BaseModel):
                            "max_episode_steps": "Episode Length"
                            }
     rename_algorithms: dict = {}
-    sort_by: Union[str, List[str]] = None
+    sort_by: Optional[Union[str, List[str]]] = None
 
 
 def drop_na(df):
@@ -127,4 +127,4 @@ def check_seeds(results):
         table = tabulate(tabulate_data, headers=headers, tablefmt='psql')
         ToolboxRegistry.error(f"Detected {problem_count} problems with seeds:\n" + table)
     else:
-        ToolboxRegistry.success(f"Passed seeds consistency check")
+        ToolboxRegistry.success("Passed seeds consistency check")

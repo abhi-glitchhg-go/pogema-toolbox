@@ -14,7 +14,7 @@ def run_episode(env, algo):
     algo.reset_states()
     results_holder = ResultsHolder()
 
-    obs, _ = env.reset(seed=env.grid_config.seed)
+    obs, _ = env.reset(seed=env.unwrapped.grid_config.seed)
     while True:
         obs, rew, terminated, truncated, infos = env.step(algo.act(obs))
         results_holder.after_step(infos)

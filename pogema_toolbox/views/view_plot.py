@@ -2,13 +2,10 @@ import seaborn as sns
 
 import numpy as np
 from matplotlib import pyplot as plt
-from typing import Optional
+from typing import Literal, Optional, Tuple
 
 from pogema_toolbox.registry import ToolboxRegistry
 from pogema_toolbox.views.view_utils import View, eval_logs_to_pandas, drop_na
-from typing import Tuple
-
-from typing_extensions import Literal
 
 
 def custom_palette():
@@ -21,9 +18,9 @@ def custom_palette():
 
 class PlotView(View):
     type: Literal['plot'] = 'plot'
-    name: str = None
-    x: str = None
-    y: str = None
+    name: Optional[str] = None
+    x: Optional[str] = None
+    y: Optional[str] = None
     by: str = 'algorithm'
     width: float = 2.6
     height: float = 2.8
@@ -46,7 +43,7 @@ class PlotView(View):
     line_types: bool = True
     extension: Literal['svg', 'png', 'pdf'] = 'pdf'
     palette: list = custom_palette()
-    hue_order: list = None
+    hue_order: Optional[list] = None
 
     tight_layout: bool = True
     ticks: Optional[list] = None

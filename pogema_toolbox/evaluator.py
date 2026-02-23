@@ -54,7 +54,7 @@ def sequential_backend(algo_config, env_configs, full_algo_name, registry_state=
             from pathlib import Path
 
             directory = Path(f'renders/{full_algo_name}/')
-            name = env.pick_name(env.grid_config)
+            name = env.pick_name(env.unwrapped.grid_config)
 
             directory.mkdir(parents=True, exist_ok=True)
             ToolboxRegistry.debug(f'Saving animation to "{directory / name}"')

@@ -122,13 +122,10 @@ The configuration is split into three main sections. The first one details the p
 ## Citation
 If you use this repository in your research or wish to cite it, please make a reference to our paper: 
 ```
-@misc{skrynnik2024pogema,
-      title={POGEMA: A Benchmark Platform for Cooperative Multi-Agent Navigation}, 
-      author={Alexey Skrynnik and Anton Andreychuk and Anatolii Borzilov and Alexander Chernyavskiy and Konstantin Yakovlev and Aleksandr Panov},
-      year={2024},
-      eprint={2407.14931},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2407.14931}, 
+@inproceedings{skrynnik2025pogema,
+  title={POGEMA: A Benchmark Platform for Cooperative Multi-Agent Pathfinding},
+  author={Skrynnik, Alexey and Andreychuk, Anton and Borzilov, Anatolii and Chernyavskiy, Alexander and Yakovlev, Konstantin and Panov, Aleksandr},
+  booktitle={The Thirteenth International Conference on Learning Representations},
+  year={2025}
 }
 ```

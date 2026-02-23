@@ -1,4 +1,5 @@
-from typing import Tuple
+from typing import Literal, Optional, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -6,12 +7,10 @@ import seaborn as sns
 from pogema_toolbox.views.view_plot import PlotView, prepare_plt, prepare_plot_fields
 from pogema_toolbox.views.view_utils import eval_logs_to_pandas, drop_na
 
-from typing import Literal
-
 
 class MultiPlotView(PlotView):
     type: Literal['multi-plot'] = 'multi-plot'
-    over: str = None
+    over: Optional[str] = None
     sort_over: bool = True
     num_cols: int = 3
     share_x: bool = False
