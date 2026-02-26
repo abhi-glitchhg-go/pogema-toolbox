@@ -51,3 +51,56 @@ def test_smoke_eval(tmp_path):
         saved = json.load(f)
     assert isinstance(saved, list) and len(saved) > 0
     assert "metrics" in saved[0]
+
+
+def test_batched_backend(tmp_path):
+    """Runs evaluation with batched backend and verifies results match sequential."""
+    ToolboxRegistry.register_env("Pogema-v0", create_env_base, Environment)
+    ToolboxRegistry.register_algorithm("A*", BatchAStarAgent)
+
+    base_env = {
+        "name": "Pogema-v0",
+        "observation_type": "POMAPF",
+        "on_target": "restart",
+        "max_episode_steps": 32,
+        "num_agents": 2,
+        "seed": {"grid_search": [42, 43]},
+        "map_size": 8,
+        "density": 0.1,
+    }
+
+    # Run sequential
+    seq_results = evaluation(
+        {
+            "environment": base_env,
+            "algorithms": {
+                "A-Star-seq": {
+                    "name": "A*",
+                    "num_process": 1,
+                    "parallel_backend": "sequential",
+                },
+            },
+        },
+        eval_dir=str(tmp_path / "seq"),
+    )
+
+    # Run batched
+    batched_results = evaluation(
+        {
+            "environment": base_env,
+            "algorithms": {
+                "A-Star-batch": {
+                    "name": "A*",
+                    "num_process": 1,
+                    "parallel_backend": "batched",
+                    "batch_size": 4,
+                },
+            },
+        },
+        eval_dir=str(tmp_path / "batch"),
+    )
+
+    assert len(batched_results) == len(seq_results)
+
+    for seq_r, batch_r in zip(seq_results, batched_results):
+        assert seq_r["metrics"] == batch_r["metrics"]

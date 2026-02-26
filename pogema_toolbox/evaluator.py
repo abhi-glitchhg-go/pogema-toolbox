@@ -273,6 +273,60 @@ def balanced_dask_backend(algo_config, env_configs, full_algo_name):
     return ordered_results
 
 
+def batched_backend(algo_config, env_configs, full_algo_name):
+    """
+    Runs the algorithm in batched mode — multiple envs stepped in lockstep with
+    batched algo calls. Ideal for GPU-accelerated algorithms.
+
+    Args:
+        algo_config: Configuration for the algorithm.
+        env_configs: List of environment configurations.
+        full_algo_name: Full name of the algorithm.
+
+    Returns:
+        List: Results of running the algorithm on the environments.
+    """
+    from pogema_toolbox.run_episode import run_batch_episodes
+
+    registry = ToolboxRegistry
+    algo_name = algo_config['name']
+    algo = registry.create_algorithm(algo_name, **algo_config)
+    algo_cfg = registry.create_algorithm_config(algo_name, **algo_config)
+    batch_size = algo_cfg.batch_size
+    use_batch = hasattr(algo, 'act_batch')
+
+    all_results = []
+    for batch_start in range(0, len(env_configs), batch_size):
+        batch_env_configs = env_configs[batch_start:batch_start + batch_size]
+
+        envs = []
+        for env_config in batch_env_configs:
+            env = registry.create_env(env_config['name'], **env_config)
+            if algo_cfg.preprocessing:
+                env = registry.create_algorithm_preprocessing(env, algo_name, **algo_config)
+            envs.append(env)
+
+        ToolboxRegistry.info(
+            f'Running batch: {full_algo_name} '
+            f'[{batch_start + 1}-{batch_start + len(envs)}/{len(env_configs)}]'
+        )
+
+        per_env_algos = None
+        if use_batch:
+            algo.reset_states()
+        else:
+            per_env_algos = []
+            for _ in envs:
+                a = registry.create_algorithm(algo_name, **algo_config)
+                a.reset_states()
+                per_env_algos.append(a)
+
+        batch_results = run_batch_episodes(envs, algo, per_env_algos=per_env_algos)
+        all_results.extend(batch_results)
+
+    return all_results
+
+
 def join_metrics_and_configs(metrics, evaluation_configs, env_grid_search, algo_config, algo_name):
     """
     Joins metrics, evaluation configurations, environment grid search, and algorithm name into a result dictionary.
@@ -392,6 +446,8 @@ def evaluation(evaluation_config, eval_dir=None):
             metrics = balanced_multiprocess_backend(algo_cfg, env_configs, key)
         elif p_algo_cfg.parallel_backend == 'balanced_dask':
             metrics = balanced_dask_backend(algo_cfg, env_configs, key)
+        elif p_algo_cfg.parallel_backend == 'batched':
+            metrics = batched_backend(algo_cfg, env_configs, key)
         else:
             raise ValueError(f'Unknown parallel backend: {p_algo_cfg.parallel_backend}')
         algo_results = join_metrics_and_configs(metrics, env_configs, configs_changes, algo_cfg, key)
