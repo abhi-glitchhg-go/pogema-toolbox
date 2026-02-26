@@ -273,10 +273,45 @@ def balanced_dask_backend(algo_config, env_configs, full_algo_name):
     return ordered_results
 
 
+def _group_by_max_agents(env_configs, max_agents):
+    """
+    Groups environment configs into batches so that the total number of agents
+    in each batch does not exceed max_agents.
+
+    Args:
+        env_configs: List of environment configurations.
+        max_agents: Maximum total number of agents per batch.
+
+    Returns:
+        List[List[int]]: List of batches, each batch is a list of indices into env_configs.
+    """
+    batches = []
+    current_batch = []
+    current_agents = 0
+
+    for idx, cfg in enumerate(env_configs):
+        num_agents = Environment(**cfg).num_agents
+        if current_batch and current_agents + num_agents > max_agents:
+            batches.append(current_batch)
+            current_batch = [idx]
+            current_agents = num_agents
+        else:
+            current_batch.append(idx)
+            current_agents += num_agents
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
+
+
 def batched_backend(algo_config, env_configs, full_algo_name):
     """
     Runs the algorithm in batched mode — multiple envs stepped in lockstep with
     batched algo calls. Ideal for GPU-accelerated algorithms.
+
+    batch_size controls the maximum total number of agents across all
+    environments in a single batch.
 
     Args:
         algo_config: Configuration for the algorithm.
@@ -292,12 +327,15 @@ def batched_backend(algo_config, env_configs, full_algo_name):
     algo_name = algo_config['name']
     algo = registry.create_algorithm(algo_name, **algo_config)
     algo_cfg = registry.create_algorithm_config(algo_name, **algo_config)
-    batch_size = algo_cfg.batch_size
+    max_agents = algo_cfg.batch_size
     use_batch = hasattr(algo, 'act_batch')
 
+    batches = _group_by_max_agents(env_configs, max_agents)
+
     all_results = []
-    for batch_start in range(0, len(env_configs), batch_size):
-        batch_env_configs = env_configs[batch_start:batch_start + batch_size]
+    env_offset = 0
+    for batch_idx, batch_indices in enumerate(batches):
+        batch_env_configs = [env_configs[i] for i in batch_indices]
 
         envs = []
         for env_config in batch_env_configs:
@@ -306,10 +344,14 @@ def batched_backend(algo_config, env_configs, full_algo_name):
                 env = registry.create_algorithm_preprocessing(env, algo_name, **algo_config)
             envs.append(env)
 
+        total_agents = sum(env.unwrapped.grid_config.num_agents for env in envs)
         ToolboxRegistry.info(
             f'Running batch: {full_algo_name} '
-            f'[{batch_start + 1}-{batch_start + len(envs)}/{len(env_configs)}]'
+            f'[batch {batch_idx + 1}/{len(batches)}, '
+            f'envs {env_offset + 1}-{env_offset + len(envs)}/{len(env_configs)}, '
+            f'{total_agents} agents]'
         )
+        env_offset += len(envs)
 
         per_env_algos = None
         if use_batch:
