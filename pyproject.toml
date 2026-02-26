@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "pogema-toolbox"
 description = "Evaluation toolbox for Pogema environment"
 readme = "README.md"
-license = "Apache-2.0"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.10,<3.15"
 authors = [
     { name = "Alexey Skrynnik" },
@@ -57,6 +57,9 @@ packages = ["pogema_toolbox"]
 
 [tool.hatch.build.targets.sdist]
 include = ["pogema_toolbox"]
+
+[tool.setuptools.packages.find]
+include = ["pogema_toolbox*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
