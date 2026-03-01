@@ -36,7 +36,14 @@ dependencies = [
     "PyYAML",
     "requests",
     "pogema @ git+https://github.com/Cognitive-AI-Systems/pogema.git@pogema-2.0",
+    "typer>=0.9",
+    "rich>=13.0",
+    "questionary>=2.0",
 ]
+
+[project.scripts]
+ptb = "pogema_toolbox.cli.app:cli_main"
+pogema-toolbox = "pogema_toolbox.cli.app:cli_main"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
