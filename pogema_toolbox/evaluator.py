@@ -64,8 +64,7 @@ def sequential_backend(algo_config, env_configs, full_algo_name, registry_state=
 
             svg_content = save_path.read_text()
             config_comment = f'<!-- env_config: {json.dumps(config_for_hash, sort_keys=True)} -->'
-            lines = svg_content.split('\n', 1)
-            save_path.write_text(lines[0] + '\n' + config_comment + '\n' + lines[1])
+            save_path.write_text(svg_content.replace('\n', '\n' + config_comment + '\n', 1))
     return results
 
 
@@ -152,7 +151,7 @@ def dask_backend(algo_config, env_configs, full_algo_name):
     registry_state = ToolboxRegistry.get_state()
 
     futures = []
-    for left, right in split_on_chunks(len(env_configs), initialized_algo_config.num_process):
+    for left, right in split_on_chunks(len(env_configs), num_process):
         future = client.submit(sequential_backend, algo_config, env_configs[left:right], full_algo_name, registry_state, pure=False)
         futures.append(future)
 
@@ -224,7 +223,7 @@ def multiprocess_backend(algo_config, env_configs, full_algo_name):
     num_process = min(initialized_algo_config.num_process, get_num_of_available_cpus())
     with ProcessPoolExecutor(num_process) as executor:
         future2stuff = []
-        for left, right in split_on_chunks(len(env_configs), initialized_algo_config.num_process):
+        for left, right in split_on_chunks(len(env_configs), num_process):
             future2stuff.append(
                 executor.submit(sequential_backend, algo_config, env_configs[left:right], full_algo_name, registry_state))
         for future in future2stuff:
@@ -335,7 +334,6 @@ def batched_backend(algo_config, env_configs, full_algo_name):
     algo = registry.create_algorithm(algo_name, **algo_config)
     algo_cfg = registry.create_algorithm_config(algo_name, **algo_config)
     max_agents = algo_cfg.batch_size
-    use_batch = hasattr(algo, 'act_batch')
 
     batches = _group_by_max_agents(env_configs, max_agents)
 
@@ -360,17 +358,9 @@ def batched_backend(algo_config, env_configs, full_algo_name):
         )
         env_offset += len(envs)
 
-        per_env_algos = None
-        if use_batch:
-            algo.reset_states()
-        else:
-            per_env_algos = []
-            for _ in envs:
-                a = registry.create_algorithm(algo_name, **algo_config)
-                a.reset_states()
-                per_env_algos.append(a)
+        algo.reset_states()
 
-        batch_results = run_batch_episodes(envs, algo, per_env_algos=per_env_algos)
+        batch_results = run_batch_episodes(envs, algo)
         all_results.extend(batch_results)
 
     return all_results

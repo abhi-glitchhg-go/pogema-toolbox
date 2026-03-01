@@ -47,7 +47,7 @@ class MultiMapWrapper(PogemaWrapper):
         if seed is None:
             seed = self.grid_config.seed
         self._rnd = np.random.default_rng(seed)
-        if self._configs is not None and len(self._configs) >= 1:
+        if self._configs:
             map_idx = self._rnd.integers(0, len(self._configs))
             cfg = deepcopy(self._configs[map_idx])
             self.env.unwrapped.grid_config = cfg

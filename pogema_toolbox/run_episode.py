@@ -25,22 +25,21 @@ def run_episode(env, algo):
     return results_holder.get_final()
 
 
-def run_batch_episodes(envs, algo, per_env_algos=None):
+def run_batch_episodes(envs, algo):
     """
-    Run multiple envs in lockstep, batching algo calls via act_batch when available.
+    Run multiple envs in lockstep, batching algo calls via act_batch.
 
     Args:
         envs: List of environments to run simultaneously.
-        algo: The algorithm used for action selection. If it has an act_batch method,
-              observations are batched into a single call for all active envs.
-        per_env_algos: Optional list of per-env algorithm instances (same length as envs).
-                       Used as fallback when algo lacks act_batch — each env gets its own
-                       algo instance to avoid stateful conflicts.
+        algo: The algorithm used for action selection. Must have an act_batch method.
 
     Returns:
         list: Per-env final results from ResultsHolder.
     """
-    use_batch = hasattr(algo, 'act_batch')
+    if not hasattr(algo, 'act_batch'):
+        raise ValueError(
+            f"Algorithm {type(algo).__name__} must implement act_batch for batched evaluation"
+        )
     results_holders = [ResultsHolder() for _ in envs]
 
     all_obs = []
@@ -58,10 +57,7 @@ def run_batch_episodes(envs, algo, per_env_algos=None):
                 active_obs.append(obs)
                 active_positions.append(i)
 
-        if use_batch:
-            active_actions = algo.act_batch(active_obs, active_positions)
-        else:
-            active_actions = [per_env_algos[pos].act(obs) for pos, obs in zip(active_positions, active_obs)]
+        active_actions = algo.act_batch(active_obs, active_positions)
 
         for pos, actions in zip(active_positions, active_actions):
             obs, rew, terminated, truncated, infos = envs[pos].step(actions)
