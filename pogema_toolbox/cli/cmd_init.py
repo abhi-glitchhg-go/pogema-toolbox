@@ -195,7 +195,7 @@ def init(
         if num_process > 1:
             algo_base["num_process"] = num_process
         algorithms_config = {
-            "MAPF-GPT-2M": {**algo_base, "path_to_weights": "weights/model-2M.pt"},
+            "MAPF-GPT-2M": {**algo_base, "path_to_weights": "weights/MAPF-GPT-2M.pt"},
         }
         algo_key = "MAPF-GPT-2M"
     else:
@@ -347,9 +347,9 @@ def _mapf_gpt_commented_entries(field_indent: str) -> str:
         key_indent = ""
 
     models = [
-        ("MAPF-GPT-2M-DDG", "weights/model-2M-DDG.pt", "2M params, DDG variant"),
-        ("MAPF-GPT-6M", "weights/model-6M.pt", "6M params"),
-        ("MAPF-GPT-85M", "weights/model-85M.pt", "85M params, largest"),
+        ("MAPF-GPT-2M-DDG", "weights/MAPF-GPT-DDG-2M.pt", "2M params, DDG variant"),
+        ("MAPF-GPT-6M", "weights/MAPF-GPT-6M.pt", "6M params"),
+        ("MAPF-GPT-85M", "weights/MAPF-GPT-85M.pt", "85M params, largest"),
     ]
 
     lines = [f"{key_indent}# Uncomment to add more MAPF-GPT model variants:\n"]
