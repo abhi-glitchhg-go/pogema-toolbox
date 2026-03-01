@@ -3,6 +3,7 @@ from copy import deepcopy
 # noinspection PyUnresolvedReferences
 from pogema_toolbox import fix_num_threads_issue
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -51,14 +52,20 @@ def sequential_backend(algo_config, env_configs, full_algo_name, registry_state=
         results.append(registry.run_episode(env, algo, algo_cfg.run_episode_func))
 
         if env_config.get('with_animation', None):
-            from pathlib import Path
-
+            config_for_hash = {k: v for k, v in env_config.items() if k != 'map'}
+            config_hash = hashlib.sha256(json.dumps(config_for_hash, sort_keys=True).encode()).hexdigest()[:8]
+            gc = env.unwrapped.grid_config
+            name = f'{gc.map_name or "map"}-seed{gc.seed}-{config_hash}.svg'
             directory = Path(f'renders/{full_algo_name}/')
-            name = env.pick_name(env.unwrapped.grid_config)
-
             directory.mkdir(parents=True, exist_ok=True)
-            ToolboxRegistry.debug(f'Saving animation to "{directory / name}"')
-            env.save_animation(name=directory / name)
+            save_path = directory / name
+            ToolboxRegistry.debug(f'Saving animation to "{save_path}"')
+            env.save_animation(str(save_path))
+
+            svg_content = save_path.read_text()
+            config_comment = f'<!-- env_config: {json.dumps(config_for_hash, sort_keys=True)} -->'
+            lines = svg_content.split('\n', 1)
+            save_path.write_text(lines[0] + '\n' + config_comment + '\n' + lines[1])
     return results
 
 
@@ -432,6 +439,17 @@ def evaluation(evaluation_config, eval_dir=None):
         List: Results of the evaluation.
     """
 
+    # Expand regex map_name into grid_search over all matching maps
+    env_cfg = evaluation_config['environment']
+    map_name = env_cfg.get('map_name')
+    if isinstance(map_name, str):
+        import re
+        all_maps = ToolboxRegistry.get_maps()
+        matched = sorted(m for m in all_maps if re.match(f'^{map_name}$', m))
+        if not matched:
+            raise KeyError(f"No map matching: {map_name}")
+        env_cfg['map_name'] = {'grid_search': matched}
+
     if 'scenarios' in evaluation_config:
         configs_changes = []
         env_configs = []
@@ -462,9 +480,9 @@ def evaluation(evaluation_config, eval_dir=None):
                 current_cfg['num_agents'] = len(scenario_copy['agents_xy'])
                 
                 if scenario_value['map_name'] in maps:
-                    if scenario_value['map_name'] not in maps:
-                        ToolboxRegistry.error(f'Map {scenario_value["map_name"]} not found in registry')
                     current_cfg['map'] = maps[scenario_value['map_name']]
+                else:
+                    ToolboxRegistry.error(f'Map {scenario_value["map_name"]} not found in registry')
                 
                 current_cfg.update(**scenario_copy)
 

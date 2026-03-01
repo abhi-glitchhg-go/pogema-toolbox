@@ -2,8 +2,8 @@ import re
 from copy import deepcopy
 
 import numpy as np
-from pogema import pogema_v0, GridConfig, AnimationMonitor, AnimationConfig
-from gymnasium import Wrapper
+from pogema import pogema_v0, GridConfig
+from pogema.wrappers.base import PogemaWrapper
 
 from pogema_toolbox.registry import ToolboxRegistry
 
@@ -13,7 +13,7 @@ class Environment(GridConfig, ):
     use_maps: bool = True
 
 
-class ProvideGlobalObstacles(Wrapper):
+class ProvideGlobalObstacles(PogemaWrapper):
     def get_global_obstacles(self):
         return self.grid.get_obstacles().astype(int).tolist()
 
@@ -24,7 +24,7 @@ class ProvideGlobalObstacles(Wrapper):
         return self.grid.get_targets_xy()
 
 
-class MultiMapWrapper(Wrapper):
+class MultiMapWrapper(PogemaWrapper):
     def __init__(self, env):
         super().__init__(env)
         self._configs = []
@@ -61,6 +61,6 @@ def create_env_base(config: Environment):
     if config.use_maps:
         env = MultiMapWrapper(env)
     if config.with_animation:
-        env = AnimationMonitor(env, AnimationConfig(directory='experiments/renders', save_every_idx_episode=None))
+        env.enable_animation()
 
     return env
