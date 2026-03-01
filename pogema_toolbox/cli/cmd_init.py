@@ -2,7 +2,6 @@ from pathlib import Path
 
 import questionary
 import typer
-import yaml
 from rich.panel import Panel
 from rich.syntax import Syntax
 
@@ -254,11 +253,11 @@ def init(
 
     files_created = [
         f"  {config_path.name}        — evaluation configuration",
-        f"  run_eval.py        — run the evaluation",
-        f"  render_results.py  — re-render views from saved JSON results",
+        "  run_eval.py        — run the evaluation",
+        "  render_results.py  — re-render views from saved JSON results",
     ]
     if effective_mode == "template":
-        files_created.append(f"  algorithm.py       — your algorithm implementation (fill in!)")
+        files_created.append("  algorithm.py       — your algorithm implementation (fill in!)")
 
     console.print("[bold pogema.teal]Files created:[/bold pogema.teal]")
     for f in files_created:
@@ -271,7 +270,7 @@ def init(
         console.print(f"  2. Run: [pogema.blue]cd {project_dir} && python run_eval.py[/pogema.blue]")
     else:
         console.print(f"  1. Run: [pogema.blue]cd {project_dir} && python run_eval.py[/pogema.blue]")
-    console.print(f"  Re-render results: [pogema.blue]python render_results.py[/pogema.blue]")
+    console.print("  Re-render results: [pogema.blue]python render_results.py[/pogema.blue]")
 
     console.print()
     console.print(Syntax(config_yaml, "yaml", theme="monokai", line_numbers=False))
@@ -327,10 +326,6 @@ def _append_mapf_gpt_comments(config_yaml: str) -> str:
             insert_idx = len(result)
             # Detect indentation of the algo key (2 levels up)
             indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
-            # algo key indent is one level less
-            key_indent = indent.rstrip()
-            if len(indent) >= 2:
-                key_indent = indent[:len(indent)//2] if indent[0] == ' ' else ''
         i += 1
 
     if insert_idx is None:

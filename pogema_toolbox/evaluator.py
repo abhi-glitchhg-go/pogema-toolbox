@@ -1,7 +1,6 @@
 from copy import deepcopy
 
-# noinspection PyUnresolvedReferences
-from pogema_toolbox import fix_num_threads_issue
+from pogema_toolbox import fix_num_threads_issue  # noqa: F401
 
 import hashlib
 import json

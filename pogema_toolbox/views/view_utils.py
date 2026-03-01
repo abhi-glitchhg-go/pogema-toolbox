@@ -4,7 +4,6 @@ import pandas as pd
 import yaml
 from pydantic import BaseModel
 from collections import defaultdict
-from tabulate import tabulate
 
 import json
 

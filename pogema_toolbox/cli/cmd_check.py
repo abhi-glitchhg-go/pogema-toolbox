@@ -166,4 +166,4 @@ def check(
         console.print(f"\n[pogema.red]Detected {problem_count} problem(s).[/pogema.red]")
         raise typer.Exit(1)
     else:
-        console.print(f"\n[bold pogema.green]Passed seed consistency check.[/bold pogema.green]")
+        console.print("\n[bold pogema.green]Passed seed consistency check.[/bold pogema.green]")
