@@ -6,6 +6,7 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from pogema_toolbox.cli.app import console
+from pogema_toolbox.registry import ToolboxRegistry
 from pogema_toolbox.cli.templates import (
     render_eval_config,
     render_run_script,
@@ -243,6 +244,9 @@ def init(
         algo_stub = render_algorithm_stub(algo_name)
         (project_dir / "algorithm.py").write_text(algo_stub)
 
+    maps_path = project_dir / "maps.yaml"
+    ToolboxRegistry.create_maps_file(maps_path)
+
     # --- Summary ---
     console.print()
     console.print(Panel(
@@ -255,6 +259,7 @@ def init(
         f"  {config_path.name}        — evaluation configuration",
         "  run_eval.py        — run the evaluation",
         "  render_results.py  — re-render views from saved JSON results",
+        "  maps.yaml          — default maps (pogema-logo, four-rooms, etc.)",
     ]
     if effective_mode == "template":
         files_created.append("  algorithm.py       — your algorithm implementation (fill in!)")

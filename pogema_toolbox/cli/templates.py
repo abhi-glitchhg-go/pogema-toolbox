@@ -68,6 +68,11 @@ def main():
     # Register algorithm
     ToolboxRegistry.register_algorithm({register_args})
 
+    # Register maps
+    maps_path = Path(__file__).parent / "maps.yaml"
+    if maps_path.exists():
+        ToolboxRegistry.register_maps_from_file(maps_path)
+
     # Load config and run
     config_path = Path(__file__).parent / "eval_config.yaml"
     eval_dir = Path(__file__).parent / "results"
