@@ -28,9 +28,9 @@ def download_moving_ai_maps(url):
 def map_to_grid(file_in_zip, remove_border=True):
     lines = []
     with file_in_zip as f:
-        type_ = f.readline().decode('utf-8').split(' ')[1]
+        # type_ = f.readline().decode('utf-8').split(' ')[1]
         height = int(f.readline().decode('utf-8').split(' ')[1])
-        width = int(f.readline().decode('utf-8').split(' ')[1])
+        # width = int(f.readline().decode('utf-8').split(' ')[1])
         _ = f.readline()
 
         for _ in range(height):

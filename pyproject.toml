@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pogema-toolbox"
+description = "Evaluation toolbox for Pogema environment"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10,<3.15"
+authors = [
+    { name = "Alexey Skrynnik" },
+]
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "loguru",
+    "matplotlib",
+    "seaborn>=0.13",
+    "tabulate>=0.8.7",
+    "dask[distributed]",
+    "numpy>=2.0",
+    "gymnasium>=1.2.3",
+    "pydantic>=2.12.5",
+    "pandas",
+    "PyYAML",
+    "requests",
+    "pogema @ git+https://github.com/Cognitive-AI-Systems/pogema.git@pogema-2.0",
+    "typer>=0.9",
+    "rich>=13.0",
+    "questionary>=2.0",
+]
+
+[project.scripts]
+ptb = "pogema_toolbox.cli.app:cli_main"
+pogema-toolbox = "pogema_toolbox.cli.app:cli_main"
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/Cognitive-AI-Systems/pogema-toolbox"
+Repository = "https://github.com/Cognitive-AI-Systems/pogema-toolbox"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "pogema_toolbox/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pogema_toolbox"]
+
+[tool.hatch.build.targets.sdist]
+include = ["pogema_toolbox"]
+
+[tool.setuptools.packages.find]
+include = ["pogema_toolbox*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

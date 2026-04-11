@@ -1,10 +1,9 @@
-from typing import Union, List
+from typing import Optional, Union, List
 
 import pandas as pd
 import yaml
 from pydantic import BaseModel
 from collections import defaultdict
-from tabulate import tabulate
 
 import json
 
@@ -21,7 +20,7 @@ class View(BaseModel):
                            "max_episode_steps": "Episode Length"
                            }
     rename_algorithms: dict = {}
-    sort_by: Union[str, List[str]] = None
+    sort_by: Optional[Union[str, List[str]]] = None
 
 
 def drop_na(df):
@@ -68,63 +67,50 @@ def load_from_folder(folder_path):
 
 
 def check_seeds(results):
+    """
+    Analyze seed consistency across results.
+
+    Returns:
+        dict with keys:
+            - problem_count: int
+            - seed_data: dict mapping (map_name, num_agents, seed) -> {algo: [results]}
+            - algorithms: sorted list of algorithm names
+            - errors: list of error strings (if data is malformed)
+    """
     seed_data = defaultdict(lambda: defaultdict(list))
     algorithms = set()
-    problem_count = 0  # Initialize problem counter
+    errors = []
 
-    # Populate seed_data and algorithms set
     for res in results:
         if 'env_grid_search' not in res:
-            ToolboxRegistry.error("env_grid_search data missing")
-            return
+            errors.append("env_grid_search data missing")
+            continue
 
         env_data = res.get('env_grid_search', {})
 
-        if 'map_name' not in env_data:
-            ToolboxRegistry.error("No map_name in env_grid_search data")
-            return
-
-        if 'num_agents' not in env_data:
-            ToolboxRegistry.error("No num_agents in env_grid_search data")
-            return
-
         if 'seed' not in env_data:
-            ToolboxRegistry.error("No seed in env_grid_search data")
-            return
+            errors.append("No seed in env_grid_search data")
+            continue
 
-        map_name = res['env_grid_search']['map_name']
-        num_agents = res['env_grid_search']['num_agents']
-        seed = res['env_grid_search']['seed']
+        map_name = env_data.get('map_name', None)
+        num_agents = env_data.get('num_agents', None)
+        seed = env_data['seed']
         algo = res['algorithm']
         algorithms.add(algo)
         seed_data[(map_name, num_agents, seed)][algo].append(res)
 
-    # Prepare data for tabulate
-    tabulate_data = []
-    headers = ['Map Name', 'Num Agents', 'Seed'] + sorted(algorithms)
+    problem_count = 0
+    sorted_algorithms = sorted(algorithms)
+    for (_map_name, _num_agents, _seed), algos in seed_data.items():
+        for algo in sorted_algorithms:
+            if algo not in algos:
+                problem_count += 1
+            elif len(algos[algo]) > 1:
+                problem_count += 1
 
-    for (map_name, num_agents, seed), algos in seed_data.items():
-        row_issues = False
-        row = [map_name, num_agents, seed]
-        for algo in sorted(algorithms):
-            if algo in algos:
-                if len(algos[algo]) > 1:  # Duplicated seeds for this algo
-                    row.append(f"x{len(algos[algo])}")
-                    problem_count += 1  # Increment problem counter
-                    row_issues = True
-                else:
-                    row.append("ok")  # Seed present and not duplicated
-            else:
-                row.append("missing")  # Seed missing for this algo
-                problem_count += 1  # Increment problem counter
-                row_issues = True
-
-        if row_issues:  # Add row only if there are issues
-            tabulate_data.append(row)
-
-    # If problems detected, show error with tabulate
-    if problem_count > 0:
-        table = tabulate(tabulate_data, headers=headers, tablefmt='psql')
-        ToolboxRegistry.error(f"Detected {problem_count} problems with seeds:\n" + table)
-    else:
-        ToolboxRegistry.success(f"Passed seeds consistency check")
+    return {
+        'problem_count': problem_count,
+        'seed_data': dict(seed_data),
+        'algorithms': sorted_algorithms,
+        'errors': errors,
+    }

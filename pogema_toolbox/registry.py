@@ -137,7 +137,7 @@ class ToolboxRegistry:
     @classmethod
     def get_maps(cls):
         if cls._maps is None:
-            cls._initialize_maps()
+            cls._maps = {}
         return cls._maps
 
     @classmethod
@@ -149,19 +149,43 @@ class ToolboxRegistry:
             cls.debug(f'Registered map with name {map_name}')
 
     @classmethod
-    def _initialize_maps(cls):
-        maps_folder_path = Path(__file__).parent / "maps"
-        cls._maps = {}
+    def register_maps_from_file(cls, path):
+        """Load and register all maps from a YAML file."""
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f'Maps file not found: {path}')
+        with open(path, "r") as f:
+            maps = yaml.safe_load(f)
+        if maps:
+            cls.register_maps(maps)
+            cls.info(f'Registered {len(maps)} maps from {path}')
+        else:
+            cls.warning(f'No maps found in {path}')
 
-        for yaml_file_path in maps_folder_path.glob("*.yaml"):
-            with open(yaml_file_path, "r") as f:
-                try:
-                    grids_content = yaml.safe_load(f)
-                    if grids_content:  # Check if the YAML file is not empty
-                        cls._maps.update(grids_content)
-                except yaml.YAMLError as exc:
-                    cls.error(f'Error loading YAML file {yaml_file_path}: {exc}')
-        cls.debug(f'Registered {len(cls._maps)} maps')
+    @classmethod
+    def create_maps_file(cls, path, include_defaults=True):
+        """Create a maps.yaml file at the given path.
+
+        If include_defaults is True, seeds the file with bundled default maps
+        from the package's maps/ directory.
+        """
+        path = Path(path)
+        maps = {}
+        if include_defaults:
+            maps_folder = Path(__file__).parent / "maps"
+            for yaml_file in sorted(maps_folder.glob("*.yaml")):
+                with open(yaml_file, "r") as f:
+                    content = yaml.safe_load(f)
+                    if content:
+                        maps.update(content)
+
+        with open(path, "w") as f:
+            yaml.add_representer(
+                str,
+                lambda dumper, data: dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|'),
+            )
+            yaml.dump(maps, f)
+        cls.info(f'Created maps file at {path} with {len(maps)} maps')
     
     # ----- Run episode section -----
     @classmethod

@@ -43,8 +43,9 @@ class Aggregator:
         return f"{round_fmt.format(estimate)} {interval_str}".strip()
 
     @staticmethod
-    def bootstrap(data, n_boot=1000, func=np.mean):
-        bs_samples = np.random.choice(data, replace=True, size=(n_boot, len(data)))
+    def bootstrap(data, n_boot=1000, func=np.mean, seed=42):
+        rng = np.random.default_rng(seed)
+        bs_samples = rng.choice(data, replace=True, size=(n_boot, len(data)))
         bs_estimates = np.apply_along_axis(func, 1, bs_samples)
         return bs_estimates
 
@@ -89,6 +90,7 @@ def process_table_view(results, view: TabularView):
     table = tabulate(df, headers='keys', tablefmt=view.table_format)
     if view.print_results:
         ToolboxRegistry.info('\n' + table)
+    return table
 
 
 def generate_mock_data(num_results=25, ):

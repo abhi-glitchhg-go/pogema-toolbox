@@ -1,8 +1,8 @@
 from copy import deepcopy
 
-# noinspection PyUnresolvedReferences
-from pogema_toolbox import fix_num_threads_issue
+from pogema_toolbox import fix_num_threads_issue  # noqa: F401
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -51,14 +51,19 @@ def sequential_backend(algo_config, env_configs, full_algo_name, registry_state=
         results.append(registry.run_episode(env, algo, algo_cfg.run_episode_func))
 
         if env_config.get('with_animation', None):
-            from pathlib import Path
-
+            config_for_hash = {k: v for k, v in env_config.items() if k != 'map'}
+            config_hash = hashlib.sha256(json.dumps(config_for_hash, sort_keys=True).encode()).hexdigest()[:8]
+            gc = env.unwrapped.grid_config
+            name = f'{gc.map_name or "map"}-seed{gc.seed}-{config_hash}.svg'
             directory = Path(f'renders/{full_algo_name}/')
-            name = env.pick_name(env.grid_config)
-
             directory.mkdir(parents=True, exist_ok=True)
-            ToolboxRegistry.debug(f'Saving animation to "{directory / name}"')
-            env.save_animation(name=directory / name)
+            save_path = directory / name
+            ToolboxRegistry.debug(f'Saving animation to "{save_path}"')
+            env.save_animation(str(save_path))
+
+            svg_content = save_path.read_text()
+            config_comment = f'<!-- env_config: {json.dumps(config_for_hash, sort_keys=True)} -->'
+            save_path.write_text(svg_content.replace('\n', '\n' + config_comment + '\n', 1))
     return results
 
 
@@ -145,7 +150,7 @@ def dask_backend(algo_config, env_configs, full_algo_name):
     registry_state = ToolboxRegistry.get_state()
 
     futures = []
-    for left, right in split_on_chunks(len(env_configs), initialized_algo_config.num_process):
+    for left, right in split_on_chunks(len(env_configs), num_process):
         future = client.submit(sequential_backend, algo_config, env_configs[left:right], full_algo_name, registry_state, pure=False)
         futures.append(future)
 
@@ -217,7 +222,7 @@ def multiprocess_backend(algo_config, env_configs, full_algo_name):
     num_process = min(initialized_algo_config.num_process, get_num_of_available_cpus())
     with ProcessPoolExecutor(num_process) as executor:
         future2stuff = []
-        for left, right in split_on_chunks(len(env_configs), initialized_algo_config.num_process):
+        for left, right in split_on_chunks(len(env_configs), num_process):
             future2stuff.append(
                 executor.submit(sequential_backend, algo_config, env_configs[left:right], full_algo_name, registry_state))
         for future in future2stuff:
@@ -271,6 +276,93 @@ def balanced_dask_backend(algo_config, env_configs, full_algo_name):
             ordered_results[env_idx] = bucket_results[i]
 
     return ordered_results
+
+
+def _group_by_max_agents(env_configs, max_agents):
+    """
+    Groups environment configs into batches so that the total number of agents
+    in each batch does not exceed max_agents.
+
+    Args:
+        env_configs: List of environment configurations.
+        max_agents: Maximum total number of agents per batch.
+
+    Returns:
+        List[List[int]]: List of batches, each batch is a list of indices into env_configs.
+    """
+    batches = []
+    current_batch = []
+    current_agents = 0
+
+    for idx, cfg in enumerate(env_configs):
+        num_agents = Environment(**cfg).num_agents
+        if current_batch and current_agents + num_agents > max_agents:
+            batches.append(current_batch)
+            current_batch = [idx]
+            current_agents = num_agents
+        else:
+            current_batch.append(idx)
+            current_agents += num_agents
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
+
+
+def batched_backend(algo_config, env_configs, full_algo_name):
+    """
+    Runs the algorithm in batched mode — multiple envs stepped in lockstep with
+    batched algo calls. Ideal for GPU-accelerated algorithms.
+
+    batch_size controls the maximum total number of agents across all
+    environments in a single batch.
+
+    Args:
+        algo_config: Configuration for the algorithm.
+        env_configs: List of environment configurations.
+        full_algo_name: Full name of the algorithm.
+
+    Returns:
+        List: Results of running the algorithm on the environments.
+    """
+    from pogema_toolbox.run_episode import run_batch_episodes
+
+    registry = ToolboxRegistry
+    algo_name = algo_config['name']
+    algo = registry.create_algorithm(algo_name, **algo_config)
+    algo_cfg = registry.create_algorithm_config(algo_name, **algo_config)
+    max_agents = algo_cfg.batch_size
+
+    batches = _group_by_max_agents(env_configs, max_agents)
+
+    all_results = []
+    env_offset = 0
+    for batch_idx, batch_indices in enumerate(batches):
+        batch_env_configs = [env_configs[i] for i in batch_indices]
+
+        envs = []
+        for env_config in batch_env_configs:
+            env = registry.create_env(env_config['name'], **env_config)
+            if algo_cfg.preprocessing:
+                env = registry.create_algorithm_preprocessing(env, algo_name, **algo_config)
+            envs.append(env)
+
+        total_agents = sum(env.unwrapped.grid_config.num_agents for env in envs)
+        ToolboxRegistry.info(
+            f'Running batch: {full_algo_name} '
+            f'[batch {batch_idx + 1}/{len(batches)}, '
+            f'envs {env_offset + 1}-{env_offset + len(envs)}/{len(env_configs)}, '
+            f'{total_agents} agents]'
+        )
+        env_offset += len(envs)
+
+        algo.reset_states()
+
+        batch_results = run_batch_episodes(envs, algo)
+        all_results.extend(batch_results)
+
+    return all_results
 
 
 def join_metrics_and_configs(metrics, evaluation_configs, env_grid_search, algo_config, algo_name):
@@ -336,6 +428,17 @@ def evaluation(evaluation_config, eval_dir=None):
         List: Results of the evaluation.
     """
 
+    # Expand regex map_name into grid_search over all matching maps
+    env_cfg = evaluation_config['environment']
+    map_name = env_cfg.get('map_name')
+    if isinstance(map_name, str):
+        import re
+        all_maps = ToolboxRegistry.get_maps()
+        matched = sorted(m for m in all_maps if re.match(f'^{map_name}$', m))
+        if not matched:
+            raise KeyError(f"No map matching: {map_name}")
+        env_cfg['map_name'] = {'grid_search': matched}
+
     if 'scenarios' in evaluation_config:
         configs_changes = []
         env_configs = []
@@ -366,9 +469,9 @@ def evaluation(evaluation_config, eval_dir=None):
                 current_cfg['num_agents'] = len(scenario_copy['agents_xy'])
                 
                 if scenario_value['map_name'] in maps:
-                    if scenario_value['map_name'] not in maps:
-                        ToolboxRegistry.error(f'Map {scenario_value["map_name"]} not found in registry')
                     current_cfg['map'] = maps[scenario_value['map_name']]
+                else:
+                    ToolboxRegistry.error(f'Map {scenario_value["map_name"]} not found in registry')
                 
                 current_cfg.update(**scenario_copy)
 
@@ -392,6 +495,8 @@ def evaluation(evaluation_config, eval_dir=None):
             metrics = balanced_multiprocess_backend(algo_cfg, env_configs, key)
         elif p_algo_cfg.parallel_backend == 'balanced_dask':
             metrics = balanced_dask_backend(algo_cfg, env_configs, key)
+        elif p_algo_cfg.parallel_backend == 'batched':
+            metrics = batched_backend(algo_cfg, env_configs, key)
         else:
             raise ValueError(f'Unknown parallel backend: {p_algo_cfg.parallel_backend}')
         algo_results = join_metrics_and_configs(metrics, env_configs, configs_changes, algo_cfg, key)
