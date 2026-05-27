@@ -35,7 +35,6 @@ dependencies = [
     "pandas",
     "PyYAML",
     "requests",
-    "pogema @ git+https://github.com/Cognitive-AI-Systems/pogema.git",
     "typer>=0.9",
     "rich>=13.0",
     "questionary>=2.0",
